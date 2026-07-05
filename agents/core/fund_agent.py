@@ -1,35 +1,28 @@
 """
-NEXUS Operating System - Fund Intelligence Agent
-Analyzes TEFAS investment funds, PYŞ metrics, and systemic TR fund allocations.
+NEXUS Operating System - Fund Agent
+Revised with Sentiment Analysis Integration.
 """
 from core.agent import BaseAgent
-# Yeni hiyerarşiye uygun güvenli import hattı
-from data.data_pipeline.local_streams.tefas_stream import TefasStream
+from core.sentiment_analyzer import SentimentAnalyzer
 
 class FundAgent(BaseAgent):
     def __init__(self, name: str):
         super().__init__(name)
-        self.stream = TefasStream()
+        self.sentiment = SentimentAnalyzer()
 
-    def run(self, data=None) -> dict:
-        self.status = "analyzing_tefas_funds"
-        fund_code = data if isinstance(data, str) else "YHS"
+    def run(self, asset: str) -> dict:
+        # Haber simülasyonu (İleride web scrape edilecek)
+        news_headline = "Şirket yeni yatırım kararı ile büyüme hedeflerini güncelledi."
         
-        fund_info = self.stream.fetch_fund_data(fund_code)
-        yearly_ret = fund_info.get("yearly_return", 0)
-        risk_val = fund_info.get("risk_value", 5)
-        efficiency_score = round((yearly_ret / (risk_val * 10)), 2)
+        # Duygu analizi uygula
+        sentiment_score = self.sentiment.analyze(news_headline)
         
-        self.remember(f"analysis_{fund_code}", {
-            "efficiency": efficiency_score,
-            "pys": fund_info["pys"],
-            "top_holdings": fund_info["top_holdings"]
-        })
+        # Temel tahmini duygu skoru ile modifiye et
+        base_score = 0.75
+        final_score = base_score + (sentiment_score * 0.2)
         
-        self.status = "idle"
         return {
-            "fund": fund_code,
-            "pys": fund_info["pys"],
-            "score": efficiency_score,
-            "decision": "ACCUMULATE" if efficiency_score > 1.2 else "HOLD"
+            "direction": "UP" if final_score > 0 else "DOWN",
+            "score": final_score,
+            "confidence": 0.85
         }
