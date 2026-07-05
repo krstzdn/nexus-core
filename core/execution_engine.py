@@ -5,11 +5,13 @@ Manages TRY (Equities) and USDT (Crypto) asset allocations simultaneously.
 import json
 from pathlib import Path
 from core.logger import Logger
+from core.risk_manager import RiskManager
 
 logger = Logger("NEXUS-EXECUTION")
 
 class ExecutionEngine:
     def __init__(self):
+        self.risk_manager = RiskManager()
         self.memory_dir = Path(__file__).resolve().parent.parent / "memory"
         self.portfolio_path = self.memory_dir / "portfolio-agent.json"
 
@@ -27,6 +29,13 @@ class ExecutionEngine:
         self.init_portfolio()
         with open(self.portfolio_path, "r", encoding="utf-8") as f:
             portfolio = json.load(f)
+
+            # Risk süzgecinden geçir
+        safe_amount = self.risk_manager.calculate_safe_allocation(cash, data["confidence"], 0.04)
+        
+        if direction == "UP" and cash > 10000:
+            allocation = safe_amount # Artık risk yönetimine bağlı
+            # ... (geri kalan emir iletim mantığı)
 
         balances = portfolio["balances"]
 
