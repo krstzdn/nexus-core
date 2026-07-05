@@ -1,0 +1,5 @@
+APP_NAME = "NEXUS AI Operating System"
+VERSION = "0.1.0"
+BUILD = "Genesis"
+STATUS = "ONLINE"
+AUTHOR = "NEXUS Intelligence Technologies"

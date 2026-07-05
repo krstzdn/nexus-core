@@ -1,0 +1,24 @@
+{
+    "network_KCHOL": {
+        "type": "Yeni İş İlişkisi",
+        "sentiment_score": 0.85,
+        "summary": "Yenilenebilir enerji iştirakinin devasa bir küresel ihracat ihalesi kazandığı açıklandı."
+    },
+    "network_THYAO": {
+        "type": "Trafik Sonuçları",
+        "sentiment_score": 0.85,
+        "summary": "Yıllık yolcu doluluk oranlarında rekor büyüme kaydedildi."
+    },
+    "forecast_KCHOL": {
+        "score": 0.75,
+        "direction": "UP",
+        "forecast_horizon": "1W",
+        "confidence": 0.8
+    },
+    "forecast_THYAO": {
+        "score": 0.75,
+        "direction": "UP",
+        "forecast_horizon": "1W",
+        "confidence": 0.8
+    }
+}
