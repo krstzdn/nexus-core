@@ -1,6 +1,6 @@
 """
-NEXUS Kernel - Evolutionary Predictive TR Financial Network
-Incorporates self-correcting validation loops and dynamic agent weightings.
+NEXUS Kernel - Operational & Evolutionary Financial Network
+Connects intelligence streams, validation engines, and execution protocols.
 """
 import datetime
 import time
@@ -10,6 +10,7 @@ from core.logger import Logger
 from agents.core.fund_agent import FundAgent
 from agents.core.corporate_agent import CorporateAgent
 from core.validator import ForecastValidator
+from core.execution_engine import ExecutionEngine
 
 logger = Logger("NEXUS-CORE")
 
@@ -18,6 +19,7 @@ class Kernel:
         self.started = datetime.datetime.now(datetime.timezone.utc)
         self.registry = AgentRegistry()
         self.validator = ForecastValidator()
+        self.executor = ExecutionEngine()
         
         self.fund_agent = FundAgent("fund-agent")
         self.corporate_agent = CorporateAgent("corp-agent")
@@ -27,35 +29,30 @@ class Kernel:
 
     def start(self):
         show_banner()
-        logger.info("NEXUS Evrimsel Tahmin ve Karar Motoru Aktif. Öz-Düzeltme Döngüsü Devrede.")
+        logger.info("NEXUS Tam Otonom Ticaret ve Tahmin Çekirdeği ONLINE.")
         
         loop_count = 1
         try:
-            while loop_count <= 2:
-                logger.info(f"--- 🔄 AI EVRİMSEL OTURUMU: #{loop_count} ---")
+            while loop_count <= 1:
+                logger.info(f"--- 🔄 AI OPERASYONEL DÖNGÜ: #{loop_count} ---")
                 
-                # 1. Tahminleri Üret
-                fund_analysis = self.fund_agent.run("YHS")
+                # 1. Tahmin Aşaması (Zeka)
+                self.fund_agent.run("YHS")
                 corp_analysis = self.corporate_agent.run()
                 
-                local_scores = []
-                for ticker, forecast in corp_analysis["forecasts"].items():
-                    logger.info(
-                        f"[🔮 TAHMİN] Varlık: {ticker} | Yön: {forecast['direction']} | "
-                        f"Sinyal: {forecast['score']:.2f} | Güven: %{forecast['confidence']*100:.0f}"
-                    )
-                    local_scores.append(forecast['score'])
+                # 2. İşlem Aşaması (Eylem/Aksiyon)
+                self.executor.process_forecasts_and_execute(corp_analysis["forecasts"])
                 
-                # 2. Döngü Sonunda Otonom Denetleyiciyi Tetikle (Öz-Düzeltme / Feedback Loop)
-                print("-" * 40)
+                # 3. Denetim Aşaması (Evrimsel Feedback)
+                print("-" * 50)
                 self.validator.validate_predictions()
-                print("-" * 40)
+                print("-" * 50)
                 
                 loop_count += 1
-                time.sleep(2)
+                time.sleep(1)
                 
         except KeyboardInterrupt:
-            logger.warning("NEXUS AI Çekirdeği kapatıldı.")
+            logger.warning("NEXUS AI Çekirdeği güvenli modda kapatıldı.")
 
 if __name__ == "__main__":
     kernel = Kernel()

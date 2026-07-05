@@ -1,6 +1,9 @@
 {
-    "portfolio_balance": {
-        "USDT": 0,
-        "BTC": 0.1594
-    }
+    "balances": {
+        "TRY": 70560.0,
+        "KCHOL": 53.33,
+        "THYAO": 44.8
+    },
+    "risk_profile": "conservative",
+    "last_updated": "2026-07-06"
 }
