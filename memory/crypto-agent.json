@@ -1,1 +1,8 @@
-{}
+{
+    "forecast_BTC": {
+        "score": 0.75,
+        "direction": "UP",
+        "forecast_horizon": "1W",
+        "confidence": 0.8
+    }
+}
