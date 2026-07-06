@@ -7,6 +7,16 @@ import sqlite3
 from pathlib import Path
 import plotly.express as px
 import pandas as pd
+import sys
+from pathlib import Path
+
+# Projenin kök dizinini (nexus-core) Python arama yollarına (sys.path) zorla mühürlüyoruz
+root_dir = str(Path(__file__).resolve().parent.parent)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
+import streamlit as st
+# Diğer mevcut importlarınız bu satırdan sonra güvenle devam edebilir...
 
 # Sayfa Genişlik Ayarları
 st.set_page_config(page_title="NEXUS Intelligence Dashboard", layout="wide")
