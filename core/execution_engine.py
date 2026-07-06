@@ -33,6 +33,14 @@ class ExecutionEngine:
             # Risk süzgecinden geçir
         safe_amount = self.risk_manager.calculate_safe_allocation(cash, data["confidence"], 0.04)
         
+        # Risk süzgecinden geçir
+        # forecasts sözlüğünden ilgili varlığın yön bilgisini çekiyoruz
+        asset_forecast = forecasts.get(asset, {})
+        direction = asset_forecast.get("direction", "HOLD")
+        confidence = asset_forecast.get("confidence", 1.0)
+        
+        safe_amount = self.risk_manager.calculate_safe_allocation(cash, confidence, 0.04)
+        
         if direction == "UP" and cash > 10000:
             allocation = safe_amount # Artık risk yönetimine bağlı
             # ... (geri kalan emir iletim mantığı)
