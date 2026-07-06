@@ -1,36 +1,42 @@
 """
-NEXUS TFA - Central Database Engine (SQLite)
-Maintains historical forecasts, real price logs, and dynamic agent weightings.
+NEXUS Operating System - Database Architecture
+Handles persistent storage for forecasts, telemetry, and agent weights with index optimization.
 """
 import sqlite3
 from pathlib import Path
+from core.logger import Logger
+
+logger = Logger("NEXUS-DATABASE")
 
 class DatabaseEngine:
     def __init__(self):
-        self.db_path = Path(__file__).resolve().parent / "nexus_tfa.db"
+        self.db_dir = Path(__file__).resolve().parent.parent / "data"
+        self.db_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path = self.db_dir / "nexus_tfa.db"
         self.init_db()
 
     def get_connection(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return sqlite3.connect(self.db_path)
 
     def init_db(self):
+        """Veri tabanı tablolarını ve performans indekslerini oluşturur."""
         with self.get_connection() as conn:
-            # Tahmin kayıtları tablosu (Eksiksiz Şema)
+            # 1. Tahminler Tablosu
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS forecasts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    agent_name TEXT,
-                    target_asset TEXT,
-                    score REAL,
-                    direction TEXT,
-                    confidence REAL,
+                    agent_name TEXT NOT NULL,
+                    target_asset TEXT NOT NULL,
+                    score REAL NOT NULL,
+                    direction TEXT NOT NULL,
+                    confidence REAL NOT NULL,
                     status TEXT DEFAULT 'PENDING',
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                    
                 )
             """)
-            # Ajan performans ve evrimsel ağırlık tablosu
+
+            # 2. Ajan Ağırlıkları Tablosu
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS agent_weights (
                     agent_name TEXT PRIMARY KEY,
@@ -39,44 +45,42 @@ class DatabaseEngine:
                     total_forecasts INTEGER DEFAULT 0
                 )
             """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS historical_prices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    asset TEXT NOT NULL,
+                    price REAL NOT NULL,
+                    date TEXT NOT NULL,
+                    UNIQUE(asset, date)
+                )
+            """)
+            
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_hist_asset_date ON historical_prices(asset, date)")
+
+            # 🚀 PERFORMANS İNDEKSLERİ (Sorgu hızını milisaniyelere düşürür)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_forecasts_status ON forecasts(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_forecasts_timestamp ON forecasts(timestamp)")
+            
+            # Varsayılan ajan ağırlıklarını yükle
+            conn.execute("INSERT OR IGNORE INTO agent_weights (agent_name, weight) VALUES ('corp-agent', 1.0)")
+            conn.execute("INSERT OR IGNORE INTO agent_weights (agent_name, weight) VALUES ('crypto-agent', 1.0)")
+            
             conn.commit()
+        logger.info("[⚙️ DB OPTİMİZASYON] Tablolar ve performans indeksleri başarıyla mühürlendi.")
 
     def save_forecast(self, agent: str, asset: str, score: float, direction: str, confidence: float):
+        """Ajan tahminini veri tabanına kaydeder."""
         with self.get_connection() as conn:
-            conn.execute(
-                "INSERT INTO forecasts (agent_name, target_asset, score, direction, confidence) VALUES (?, ?, ?, ?, ?)",
-                (agent, asset, score, direction, confidence)
-            )
-            conn.commit()
-
-    def get_pending_forecasts(self):
-        with self.get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM forecasts WHERE status = 'PENDING'")
-            return cursor.fetchall()
-
-    def update_forecast_status(self, forecast_id: int, status: str):
-        with self.get_connection() as conn:
-            conn.execute("UPDATE forecasts SET status = ? WHERE id = ?", (status, forecast_id))
-            conn.commit()
-
-    def update_agent_weight(self, agent_name: str, is_correct: bool):
-        with self.get_connection() as conn:
-            row = conn.execute("SELECT * FROM agent_weights WHERE agent_name = ?", (agent_name,)).fetchone()
+            conn.execute("""
+                INSERT INTO forecasts (agent_name, target_asset, score, direction, confidence)
+                VALUES (?, ?, ?, ?, ?)
+            """, (agent, asset, score, direction, confidence))
             
-            if not row:
-                conn.execute("INSERT INTO agent_weights (agent_name) VALUES (?)", (agent_name,))
-                current_weight = 1.0
-                current_total = 0
-            else:
-                current_weight = row["weight"]
-                current_total = row["total_forecasts"]
-            
-            new_total = current_total + 1
-            weight_delta = 0.05 if is_correct else -0.05
-            new_weight = max(0.1, min(2.0, current_weight + weight_delta))
-            
-            conn.execute(
-                "UPDATE agent_weights SET weight = ?, total_forecasts = ? WHERE agent_name = ?",
-                (new_weight, new_total, agent_name)
-            )
+            # Toplam tahmin sayısını güncelle
+            conn.execute("""
+                UPDATE agent_weights 
+                SET total_forecasts = total_forecasts + 1 
+                WHERE agent_name = ?
+            """, (agent,))
             conn.commit()
