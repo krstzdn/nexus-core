@@ -21,8 +21,24 @@ def get_db_data(query, params=()):
 with st.sidebar:
     st.title("🧠 System Operations")
     st.markdown("Execute or synchronize the underlying NEXUS AI Core.")
+    
+    # Hedef varlık seçimi ekliyoruz
+    target_asset = st.selectbox("🎯 Target Asset for Council", ["KCHOL", "THYAO", "BTC"])
+    
     if st.button("🚀 Run AI Council (Kernel)", use_container_width=True):
-        st.info("Kernel execution signal sent to core.")
+        from core.kernel import AIKernel  # .py takısı tamamen kaldırıldı
+        
+        kernel = AIKernel()
+        
+        kernel = AIKernel()
+        with st.spinner("Council is debating..."):
+            session_result = kernel.execute_council_session(target_asset)
+            
+        if session_result:
+            st.success(f" Oylama Tamamlandı!")
+            st.metric("Final Decision", session_result["final_decision"])
+            st.metric("Consensus Strength", f"{session_result['consensus_score']:.2f}")
+            st.toast(f"{target_asset} için karara varıldı!", icon="🏛️")
 
 # --- ANA PANEL ---
 st.title("🌌 NEXUS Intelligence Dashboard")
