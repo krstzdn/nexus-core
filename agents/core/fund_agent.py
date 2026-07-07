@@ -1,28 +1,30 @@
-"""
-NEXUS Operating System - Fund Agent
-Revised with Sentiment Analysis Integration.
-"""
-from core.agent import BaseAgent
-from core.sentiment_analyzer import SentimentAnalyzer
+from memory.memory_engine import MemoryEngine
 
-class FundAgent(BaseAgent):
-    def __init__(self, name: str):
-        super().__init__(name)
-        self.sentiment = SentimentAnalyzer()
+class FundAgent:
+    def __init__(self):
+        self.employee_id = "NX-FUND-05"
+        self.role = "Yatırım Fonları ve BES Portföy Yönetim Uzmanı"
+        self.memory = MemoryEngine(agent_name="fund-agent")
 
-    def run(self, asset: str) -> dict:
-        # Haber simülasyonu (İleride web scrape edilecek)
-        news_headline = "Şirket yeni yatırım kararı ile büyüme hedeflerini güncelledi."
+    def analyze_asset(self, symbol, current_price, oracle_report):
+        """Fon dünyasını makro risk dengesine göre analiz eder."""
+        sentiment = oracle_report.get("sentiment_score", 50)
         
-        # Duygu analizi uygula
-        sentiment_score = self.sentiment.analyze(news_headline)
+        past_decisions = self.memory.load("decision_history") or []
         
-        # Temel tahmini duygu skoru ile modifiye et
-        base_score = 0.75
-        final_score = base_score + (sentiment_score * 0.2)
+        # Fonlar genelde daha defansiftir. Piyasa çok belirsizken (Nötr-Negatif) dengeli fon alımı kollanır.
+        if 45 <= sentiment <= 60:
+            decision = "BUY"
+        elif sentiment < 35:
+            decision = "SELL"  # Nakde geçiş sinyali
+        else:
+            decision = "HOLD"
+            
+        past_decisions.append(decision)
+        self.memory.save("decision_history", past_decisions[-20:])
         
         return {
-            "direction": "UP" if final_score > 0 else "DOWN",
-            "score": final_score,
-            "confidence": 0.85
+            "employee_id": self.employee_id, 
+            "decision": decision, 
+            "focus": "Fon Sepeti & BES Tahsisi"
         }

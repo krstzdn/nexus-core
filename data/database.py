@@ -1,86 +1,72 @@
-"""
-NEXUS Operating System - Database Architecture
-Handles persistent storage for forecasts, telemetry, and agent weights with index optimization.
-"""
 import sqlite3
-from pathlib import Path
-from core.logger import Logger
+import os
+from datetime import datetime
 
-logger = Logger("NEXUS-DATABASE")
+DB_PATH = os.path.join("data", "nexus_tfa.db")
 
-class DatabaseEngine:
-    def __init__(self):
-        self.db_dir = Path(__file__).resolve().parent.parent / "data"
-        self.db_dir.mkdir(parents=True, exist_ok=True)
-        self.db_path = self.db_dir / "nexus_tfa.db"
-        self.init_db()
+def init_db():
+    """Şirket ilk açıldığında veritabanını ve tabloları hazırlar."""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Konsey kararlarını, sentiment skorlarını ve varlık bilgilerini tutan ana tablo
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS council_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            symbol TEXT,
+            price REAL,
+            consensus_score REAL,
+            decision TEXT,
+            sentiment_score REAL
+        )
+    """)
+    conn.commit()
+    conn.close()
+    print("[DATABASE] nexus_tfa.db başarıyla senkronize edildi ve hazır.")
 
-    def get_connection(self):
-        return sqlite3.connect(self.db_path)
+def save_market_state_to_db(state):
+    """
+    Kernel'dan (CEO) gelen shared_market_state paketini alır 
+    and veritabanına kalıcı olarak arşivler.
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        symbol = state["current_symbol"]
+        price = state["live_price"]
+        c_score = state["consensus_score"]
+        decision = state["final_decision"]
+        # Oracle ajanımızın ürettiği sentiment skoru
+        sentiment = state["oracle_report"].get("sentiment_score", 50.0)
+        
+        cursor.execute("""
+            INSERT INTO council_logs (timestamp, symbol, price, consensus_score, decision, sentiment_score)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (timestamp, symbol, price, c_score, decision, sentiment))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[DB WRITE ERROR] Veri arşive kaydedilemedi: {str(e)}")
 
-    def init_db(self):
-        """Veri tabanı tablolarını ve performans indekslerini oluşturur."""
-        with self.get_connection() as conn:
-            # 1. Tahminler Tablosu
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS forecasts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    agent_name TEXT NOT NULL,
-                    target_asset TEXT NOT NULL,
-                    score REAL NOT NULL,
-                    direction TEXT NOT NULL,
-                    confidence REAL NOT NULL,
-                    status TEXT DEFAULT 'PENDING',
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-                    
-                )
-            """)
-
-            # 2. Ajan Ağırlıkları Tablosu
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS agent_weights (
-                    agent_name TEXT PRIMARY KEY,
-                    weight REAL DEFAULT 1.0,
-                    success_rate REAL DEFAULT 100.0,
-                    total_forecasts INTEGER DEFAULT 0
-                )
-            """)
-
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS historical_prices (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    asset TEXT NOT NULL,
-                    price REAL NOT NULL,
-                    date TEXT NOT NULL,
-                    UNIQUE(asset, date)
-                )
-            """)
-            
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_hist_asset_date ON historical_prices(asset, date)")
-
-            # 🚀 PERFORMANS İNDEKSLERİ (Sorgu hızını milisaniyelere düşürür)
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_forecasts_status ON forecasts(status)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_forecasts_timestamp ON forecasts(timestamp)")
-            
-            # Varsayılan ajan ağırlıklarını yükle
-            conn.execute("INSERT OR IGNORE INTO agent_weights (agent_name, weight) VALUES ('corp-agent', 1.0)")
-            conn.execute("INSERT OR IGNORE INTO agent_weights (agent_name, weight) VALUES ('crypto-agent', 1.0)")
-            
-            conn.commit()
-        logger.info("[⚙️ DB OPTİMİZASYON] Tablolar ve performans indeksleri başarıyla mühürlendi.")
-
-    def save_forecast(self, agent: str, asset: str, score: float, direction: str, confidence: float):
-        """Ajan tahminini veri tabanına kaydeder."""
-        with self.get_connection() as conn:
-            conn.execute("""
-                INSERT INTO forecasts (agent_name, target_asset, score, direction, confidence)
-                VALUES (?, ?, ?, ?, ?)
-            """, (agent, asset, score, direction, confidence))
-            
-            # Toplam tahmin sayısını güncelle
-            conn.execute("""
-                UPDATE agent_weights 
-                SET total_forecasts = total_forecasts + 1 
-                WHERE agent_name = ?
-            """, (agent,))
-            conn.commit()
+def get_recent_logs_from_db(symbol, limit=5):
+    """Arayüzün (Dashboard) ekranı güncellerken okuyacağı son kararlar."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT timestamp, price, consensus_score, decision 
+            FROM council_logs 
+            WHERE symbol = ?
+            ORDER BY id DESC LIMIT ?
+        """, (symbol, limit))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    except Exception as e:
+        print(f"[DB READ ERROR] Arşiv okunurken hata çıktı: {str(e)}")
+        return []
