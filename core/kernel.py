@@ -3,7 +3,6 @@ import httpx
 from datetime import datetime
 
 # 1. ORTAK YÖNETİM VE DENETİM KADROSU
-from core.memory_engine import MemoryEngine # Hafıza motorunun ana yoldan çekilmesi
 from agents.core.oracle import OracleAgent
 from agents.core.vector import VectorAgent
 from agents.core.prophet import ProphetAgent
@@ -11,15 +10,16 @@ from agents.core.atlas import AtlasAgent
 from agents.core.sentinel import SentinelAgent
 from agents.core.evolve import EvolveAgent
 from data.database import save_market_state_to_db
+from memory import memory_engine
 
 # 2. VARLIK SINIFI UZMANLARI (DEPARTMAN ŞEFLERİ)
 from agents.core.commodity_agent import CommodityAgent
 from agents.core.fixed_income_agent import FixedIncomeAgent
-from agents.core.equity_agent import EquityAgent  
-from agents.core.fund_agent import FundAgent      
+from agents.core.equity_agent import EquityAgent  # <-- YENİ İŞE ALIM
+from agents.core.fund_agent import FundAgent      # <-- YENİ İŞE ALIM
 
-# 3. HOLDİNG ÜRÜN KATMANI (Kilit Nokta: .py uzantısı yok!)
-from products.portfolio_manager import AllWeatherPortfolio
+# 3. HOLDİNG ÜRÜN KATMANI
+from products.portfolio_manager import AllWeatherPortfolio 
 
 class NexusCore:
     def __init__(self):
